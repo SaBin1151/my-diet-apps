@@ -1,126 +1,121 @@
-'use client'
-
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
+import React from 'react';
+import Link from 'next/link';
 
 export default function OnboardingPage() {
-  const router = useRouter()
-  const supabase = createClient()
-  const [loading, setLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setLoading(true)
-
-    const formData = new FormData(e.currentTarget)
-    const currentWeight = Number(formData.get('current_weight'))
-
-    // 1. 현재 로그인한 유저 확인
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (!user) {
-      alert('로그인이 필요합니다.')
-      router.push('/login')
-      return
-    }
-
-    // 2. Profile 테이블에 기본 정보 저장
-    const { error: profileError } = await supabase.from('profiles').upsert({
-      user_id: user.id,
-      height: Number(formData.get('height')),
-      age: Number(formData.get('age')),
-      gender: String(formData.get('gender')),
-      start_weight: currentWeight,
-      goal_weight: Number(formData.get('goal_weight')),
-      workout_days_per_week: Number(formData.get('workout_days')),
-      average_workout_minutes: Number(formData.get('workout_minutes'))
-    })
-
-    if (profileError) {
-      alert('프로필 저장 실패: ' + profileError.message)
-      setLoading(false)
-      return
-    }
-
-    // 3. Weight Logs 테이블에 '시작 체중'을 첫 기록으로 저장
-    const { error: logError } = await supabase.from('weight_logs').insert({
-      user_id: user.id,
-      weight: currentWeight,
-      date: new Date().toISOString().split('T')[0] // 오늘 날짜 (YYYY-MM-DD)
-    })
-
-    if (logError) {
-      console.error('체중 기록 실패:', logError)
-      // 프로필은 성공했으므로 치명적 에러로 처리하지 않고 넘어갑니다.
-    }
-
-    // 4. 완료 후 대시보드로 이동
-    alert('설정이 완료되었습니다!')
-    router.push('/dashboard')
-    setLoading(false)
-  }
-
   return (
-    <div className="max-w-md mx-auto mt-10 p-6 border rounded shadow-md">
-      <h1 className="text-2xl font-bold mb-6 text-center">Let's set up your profile</h1>
+    <div style={{ maxWidth: '600px', margin: '0 auto' }}>
       
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* 1. Header */}
+      <div style={{ textAlign: 'center', marginBottom: 'var(--space-xl)' }}>
+        <h1 style={{ marginBottom: 'var(--space-sm)' }}>Let's set up your plan</h1>
+        <p>We need a few details to calculate your calorie targets.</p>
+      </div>
+
+      {/* 2. Form Container */}
+      <form onSubmit={(e) => e.preventDefault()}> {/* UI 전용이라 새로고침 방지 */}
         
-        {/* 기본 신체 정보 */}
-        <div className="flex gap-4">
-          <label className="flex-1">
-            <span className="block text-sm font-bold mb-1">Height (cm)</span>
-            <input name="height" type="number" required className="w-full border p-2 rounded" />
-          </label>
-          <label className="flex-1">
-            <span className="block text-sm font-bold mb-1">Age</span>
-            <input name="age" type="number" required className="w-full border p-2 rounded" />
-          </label>
+        {/* Section A: Body Stats */}
+        <div className="card">
+          <h2 className="card-title">Body Stats</h2>
+          
+          <div className="grid-2">
+            {/* Height */}
+            <div>
+              <label style={labelStyle}>HEIGHT (CM)</label>
+              <input type="number" placeholder="175" style={inputStyle} />
+            </div>
+            
+            {/* Age */}
+            <div>
+              <label style={labelStyle}>AGE</label>
+              <input type="number" placeholder="25" style={inputStyle} />
+            </div>
+          </div>
+
+          <div className="grid-2" style={{ marginTop: 'var(--space-md)' }}>
+            {/* Gender */}
+            <div>
+              <label style={labelStyle}>GENDER</label>
+              <select style={inputStyle}>
+                <option>Male</option>
+                <option>Female</option>
+              </select>
+            </div>
+
+            {/* Current Weight */}
+            <div>
+              <label style={labelStyle}>CURRENT WEIGHT (KG)</label>
+              <input type="number" placeholder="75.0" step="0.1" style={inputStyle} />
+            </div>
+          </div>
         </div>
 
-        <label>
-          <span className="block text-sm font-bold mb-1">Gender</span>
-          <select name="gender" className="w-full border p-2 rounded">
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-          </select>
-        </label>
-
-        {/* 체중 정보 */}
-        <div className="flex gap-4">
-          <label className="flex-1">
-            <span className="block text-sm font-bold mb-1">Current Weight (kg)</span>
-            <input name="current_weight" type="number" step="0.1" required className="w-full border p-2 rounded" />
-          </label>
-          <label className="flex-1">
-            <span className="block text-sm font-bold mb-1">Goal Weight (kg)</span>
-            <input name="goal_weight" type="number" step="0.1" required className="w-full border p-2 rounded" />
-          </label>
+        {/* Section B: Goals */}
+        <div className="card">
+          <h2 className="card-title">Goal</h2>
+          
+          <div>
+            <label style={labelStyle}>GOAL WEIGHT (KG)</label>
+            <input type="number" placeholder="68.0" step="0.1" style={inputStyle} />
+          </div>
         </div>
 
-        <hr className="my-2" />
+        {/* Section C: Activity Level */}
+        <div className="card">
+          <h2 className="card-title">Activity</h2>
+          
+          <div className="grid-2">
+            {/* Workout Days */}
+            <div>
+              <label style={labelStyle}>WORKOUT DAYS / WEEK</label>
+              <select style={inputStyle}>
+                <option>0 (Sedentary)</option>
+                <option>1-2 days</option>
+                <option>3-4 days</option>
+                <option>5+ days</option>
+              </select>
+            </div>
 
-        {/* 운동 습관 */}
-        <label>
-          <span className="block text-sm font-bold mb-1">Workout Days (per week)</span>
-          <input name="workout_days" type="number" min="0" max="7" required className="w-full border p-2 rounded" />
-        </label>
+            {/* Workout Minutes */}
+            <div>
+              <label style={labelStyle}>AVG. MINUTES / SESSION</label>
+              <input type="number" placeholder="60" style={inputStyle} />
+            </div>
+          </div>
+        </div>
 
-        <label>
-          <span className="block text-sm font-bold mb-1">Avg. Workout Minutes</span>
-          <input name="workout_minutes" type="number" min="0" required className="w-full border p-2 rounded" />
-        </label>
-
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="bg-green-600 text-white py-3 rounded mt-4 font-bold hover:bg-green-700 disabled:opacity-50"
-        >
-          {loading ? 'Saving...' : 'Complete Setup'}
-        </button>
+        {/* 3. Submit Action */}
+        <div style={{ marginTop: 'var(--space-xl)', textAlign: 'center' }}>
+          <Link href="/dashboard">
+            <button className="btn-primary" style={{ width: '100%', maxWidth: '300px' }}>
+              Calculate Plan & Continue
+            </button>
+          </Link>
+        </div>
 
       </form>
     </div>
-  )
+  );
 }
+
+// -- Styles (Internal for clean JSX) --
+
+const labelStyle: React.CSSProperties = {
+  display: 'block',
+  marginBottom: '8px',
+  color: 'var(--text-muted)',
+  fontSize: '0.75rem',
+  fontWeight: 700,
+  letterSpacing: '0.05em'
+};
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '12px',
+  fontSize: '1rem',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: '6px',
+  backgroundColor: '#fff',
+  color: 'var(--text-main)',
+  outline: 'none'
+};
