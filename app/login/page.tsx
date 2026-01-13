@@ -1,89 +1,110 @@
-'use client'
+'use client';
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/utils/supabase/client'
+import { createClient } from '@supabase/supabase-js';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+// Supabase 클라이언트 생성
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function LoginPage() {
-  const router = useRouter()
-  const supabase = createClient()
-  
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState('');
 
-  // 로그인 로직
-  const handleLogin = async () => {
-    setLoading(true)
+  // 로그인 (Sign In)
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setMessage('');
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
-    })
+    });
 
     if (error) {
-      alert('Login Error: ' + error.message)
+      setMessage(error.message);
+      setLoading(false);
     } else {
-      // 성공 시 /onboarding 페이지로 이동
-      router.push('/onboarding')
+      router.push('/dashboard'); // 로그인 성공 시 대시보드로 이동
+      router.refresh();
     }
-    setLoading(false)
-  }
+  };
 
-  // 회원가입 로직
+  // 회원가입 (Sign Up)
   const handleSignUp = async () => {
-    setLoading(true)
+    setLoading(true);
+    setMessage('');
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
-    })
+    });
 
     if (error) {
-      alert('Signup Error: ' + error.message)
+      setMessage(error.message);
     } else {
-      alert('회원가입 성공! 이메일을 확인하여 인증 링크를 클릭해주세요.')
+      setMessage('Confirmation email sent! Check your inbox.');
     }
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen p-4">
-      <div className="flex flex-col gap-4 w-full max-w-xs border p-8 rounded">
-        <h1 className="text-2xl font-bold text-center">Login / Sign Up</h1>
-        
-        <input
-          type="email"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="border p-2 rounded"
-        />
-        
-        <input
-          type="password"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="border p-2 rounded"
-        />
-
-        <div className="flex flex-col gap-2 mt-4">
-          <button 
-            onClick={handleLogin}
-            disabled={loading}
-            className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600 disabled:opacity-50"
-          >
-            {loading ? 'Processing...' : 'Log In'}
-          </button>
-          
-          <button 
-            onClick={handleSignUp}
-            disabled={loading}
-            className="border border-gray-300 p-2 rounded hover:bg-gray-100 disabled:opacity-50"
-          >
-            Sign Up
-          </button>
+    <div style={{ maxWidth: '400px', margin: '60px auto', textAlign: 'center' }}>
+      <h1 style={{ marginBottom: '24px', fontSize: '1.5rem' }}>Welcome Back</h1>
+      
+      <form onSubmit={handleLogin} className="card">
+        <div style={{ marginBottom: '16px', textAlign: 'left' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#666', marginBottom: '8px' }}>EMAIL</label>
+          <input 
+            type="email" 
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            style={{ width: '100%', padding: '12px', border: '1px solid #e5e5e5', borderRadius: '6px' }}
+          />
         </div>
-      </div>
+
+        <div style={{ marginBottom: '24px', textAlign: 'left' }}>
+          <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: '#666', marginBottom: '8px' }}>PASSWORD</label>
+          <input 
+            type="password" 
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+            style={{ width: '100%', padding: '12px', border: '1px solid #e5e5e5', borderRadius: '6px' }}
+          />
+        </div>
+
+        {message && <p style={{ color: 'red', fontSize: '0.875rem', marginBottom: '16px' }}>{message}</p>}
+
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="btn-primary" 
+          style={{ width: '100%', marginBottom: '12px' }}
+        >
+          {loading ? 'Loading...' : 'Sign In'}
+        </button>
+
+        <button 
+          type="button" 
+          onClick={handleSignUp}
+          disabled={loading}
+          style={{ 
+            background: 'none', border: 'none', color: '#666', 
+            textDecoration: 'underline', cursor: 'pointer', fontSize: '0.875rem' 
+          }}
+        >
+          No account? Sign Up
+        </button>
+      </form>
     </div>
-  )
+  );
 }

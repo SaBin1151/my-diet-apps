@@ -15,14 +15,14 @@ export default function Home() {
       {/* 2. Menu Buttons */}
       <div style={{ display: 'flex', gap: 'var(--space-md)', justifyContent: 'center' }}>
         
-        {/* Onboarding Button */}
-        <Link href="/onboarding">
+        {/* [수정됨] 이제 로그인 페이지로 이동합니다 */}
+        <Link href="/login">
           <button className="btn-primary" style={{ padding: '16px 32px' }}>
             Get Started
           </button>
         </Link>
 
-        {/* Dashboard Button (이미 사용 중이라면) */}
+        {/* Dashboard Button (바로가기용) */}
         <Link href="/dashboard">
           <button 
             style={{ 
@@ -31,7 +31,8 @@ export default function Home() {
               border: '1px solid var(--border-subtle)', 
               borderRadius: '6px',
               cursor: 'pointer',
-              fontWeight: 600
+              fontWeight: 600,
+              color: 'var(--text-main)'
             }}
           >
             Go to Dashboard
