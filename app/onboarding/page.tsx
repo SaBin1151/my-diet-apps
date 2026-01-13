@@ -1,3 +1,5 @@
+'use client'; // [중요] 이 줄이 있어야 onSubmit 같은 이벤트를 사용할 수 있습니다.
+
 import React from 'react';
 import Link from 'next/link';
 
@@ -12,7 +14,7 @@ export default function OnboardingPage() {
       </div>
 
       {/* 2. Form Container */}
-      <form onSubmit={(e) => e.preventDefault()}> {/* UI 전용이라 새로고침 방지 */}
+      <form onSubmit={(e) => e.preventDefault()}> {/* 이제 에러 없이 작동합니다 */}
         
         {/* Section A: Body Stats */}
         <div className="card">
