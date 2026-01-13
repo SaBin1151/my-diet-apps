@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 
-// Supabase 클라이언트 설정
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -15,148 +14,139 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   
-  // 데이터 상태 관리
   const [profile, setProfile] = useState<any>(null);
   const [currentWeight, setCurrentWeight] = useState<number | null>(null);
-  const [startWeight, setStartWeight] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
-      // 1. 현재 로그인한 사용자 확인
       const { data: { user } } = await supabase.auth.getUser();
-      
-      // 로그인이 안 되어 있다면 로그인 페이지로 보냄
-      if (!user) {
-        router.push('/login');
-        return;
-      }
+      if (!user) { router.push('/login'); return; }
 
-      // 2. 프로필 정보 가져오기 (profiles 테이블)
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      
-      // [핵심 기능] 프로필이 없으면 온보딩 페이지로 강제 이동 (납치)
-      if (!profileData) {
-        router.push('/onboarding');
-        return;
-      }
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', user.id).single();
+      if (!profileData) { router.push('/onboarding'); return; }
       setProfile(profileData);
 
-      // 3. 몸무게 기록 가져오기 (weight_logs 테이블) - 최신순 정렬
+      // 최신 몸무게 1개만 가져옴
       const { data: logs } = await supabase
         .from('weight_logs')
         .select('weight')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (logs && logs.length > 0) {
-        setCurrentWeight(logs[0].weight); // 가장 최근 기록 (현재)
-        setStartWeight(logs[logs.length - 1].weight); // 가장 마지막 기록 (시작)
-      }
-
+      if (logs && logs.length > 0) setCurrentWeight(logs[0].weight);
       setLoading(false);
     };
 
     fetchData();
   }, [router]);
 
-  // 로딩 화면
-  if (loading) {
-    return (
-      <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
-        Loading dashboard...
-      </div>
-    );
-  }
+  if (loading) return <div style={{ padding: '60px', textAlign: 'center' }}>Running simulation...</div>;
 
-  // -- 계산 로직 (기초대사량 BMR 및 목표 칼로리) --
-  // 남성: 10*W + 6.25*H - 5*A + 5
-  // 여성: 10*W + 6.25*H - 5*A - 161
+  // --- Quant Simulation Logic ---
+
+  // 1. TDEE (Total Daily Energy Expenditure) 계산
   const isMale = profile.gender === 'Male';
-  // 몸무게 정보가 없으면 기본값 70kg로 계산 방지
-  const calcWeight = currentWeight || 70; 
+  const calcWeight = currentWeight || 70;
+  // Mifflin-St Jeor Equation (가장 정확도가 높음)
   const bmr = (10 * calcWeight) + (6.25 * profile.height) - (5 * profile.age) + (isMale ? 5 : -161);
   
-  // 활동량에 따른 계수 (단순화: 기본 1.2 + 운동량 반영)
-  let activityMultiplier = 1.2;
-  if (profile.activity_level === '3-4 days') activityMultiplier = 1.375;
-  if (profile.activity_level === '5+ days') activityMultiplier = 1.55;
+  let activityMultiplier = 1.2; // Sedentary
+  if (profile.activity_level === '1-2 days') activityMultiplier = 1.375;
+  if (profile.activity_level === '3-4 days') activityMultiplier = 1.55;
+  if (profile.activity_level === '5+ days') activityMultiplier = 1.725;
+  
+  const tdee = Math.round(bmr * activityMultiplier); // 유지 칼로리
 
-  const dailyTarget = Math.round(bmr * activityMultiplier);
+  // 2. 감량 시뮬레이션 시나리오 (1kg 지방 = 약 7700kcal)
+  const weightToLose = calcWeight - profile.goal_weight;
+  const totalCalorieDeficitNeeded = weightToLose * 7700;
 
-  // 체중 변화량 및 남은 체중 계산
-  const weightChange = currentWeight && startWeight ? (currentWeight - startWeight).toFixed(1) : '0.0';
-  const remaining = currentWeight ? (currentWeight - profile.goal_weight).toFixed(1) : '0.0';
+  // 시나리오 정의
+  const scenarios = [
+    { label: "Slow & Steady", deficit: 300, color: "var(--text-main)" },
+    { label: "Standard", deficit: 500, color: "var(--primary)" },
+    { label: "Aggressive", deficit: 800, color: "#ef4444" },
+  ];
 
   return (
     <div>
-      <h1 style={{ fontSize: '1.5rem', marginBottom: 'var(--space-lg)' }}>
-        Today's Overview
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-lg)' }}>
+        <h1 style={{ fontSize: '1.5rem', margin: 0 }}>Dashboard</h1>
+        <Link href="/trends" style={{ fontSize: '0.875rem', color: 'var(--primary)', textDecoration: 'none', fontWeight: 600 }}>
+          View Trends →
+        </Link>
+      </div>
 
+      {/* 1. Base Stats */}
       <div className="grid-2" style={{ marginBottom: 'var(--space-md)' }}>
-        {/* Status Card */}
         <div className="card">
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>STATUS</p>
-          <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: 'var(--space-sm)', color: 'var(--primary)' }}>
-            ON TRACK
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>MAINTENANCE (TDEE)</p>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: 'var(--space-sm)' }}>
+            {tdee} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500 }}>kcal</span>
           </div>
-          <p style={{ marginTop: 'var(--space-sm)', color: 'var(--text-main)' }}>
-            Goal: {profile.goal_weight} kg
+          <p style={{ marginTop: 'var(--space-sm)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Calories to maintain {calcWeight}kg
           </p>
         </div>
 
-        {/* Calorie Target Card (자동 계산됨) */}
         <div className="card">
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>DAILY TARGET</p>
-          <div style={{ display: 'flex', alignItems: 'baseline', marginTop: 'var(--space-sm)' }}>
-            <span style={{ fontSize: '3rem', fontWeight: 800 }}>{dailyTarget}</span>
-            <span style={{ marginLeft: '8px', color: 'var(--text-muted)' }}>kcal</span>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', fontWeight: 600 }}>REMAINING WEIGHT</p>
+          <div style={{ fontSize: '2.5rem', fontWeight: 800, marginTop: 'var(--space-sm)', color: 'var(--text-main)' }}>
+            {weightToLose.toFixed(1)} <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500 }}>kg</span>
           </div>
+          <p style={{ marginTop: 'var(--space-sm)', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+            Goal: {profile.goal_weight}kg
+          </p>
         </div>
       </div>
 
-      <div className="card">
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 'var(--space-md)', textAlign: 'center' }}>
-          
-          {/* Current Weight */}
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '4px' }}>CURRENT</p>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-              {currentWeight ? currentWeight : '--'} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>kg</span>
-            </div>
-          </div>
-
-          {/* Change */}
-          <div style={{ borderLeft: '1px solid var(--border-subtle)', borderRight: '1px solid var(--border-subtle)' }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '4px' }}>CHANGE</p>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700, color: Number(weightChange) > 0 ? 'red' : 'var(--primary)' }}>
-              {Number(weightChange) > 0 ? '+' : ''}{weightChange} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>kg</span>
-            </div>
-          </div>
-
-          {/* Remaining */}
-          <div>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '4px' }}>TO GO</p>
-            <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>
-              {remaining} <span style={{ fontSize: '0.875rem', fontWeight: 400 }}>kg</span>
-            </div>
-          </div>
-
-        </div>
+      {/* 2. Simulation Table */}
+      <h2 style={{ fontSize: '1.1rem', marginBottom: 'var(--space-md)', fontWeight: 700 }}>Projection Scenarios</h2>
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+          <thead>
+            <tr style={{ borderBottom: '1px solid var(--border-subtle)', background: '#f9fafb' }}>
+              <th style={{ textAlign: 'left', padding: '16px', color: 'var(--text-muted)' }}>STRATEGY</th>
+              <th style={{ textAlign: 'right', padding: '16px', color: 'var(--text-muted)' }}>DAILY EAT</th>
+              <th style={{ textAlign: 'right', padding: '16px', color: 'var(--text-muted)' }}>EST. TIME</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scenarios.map((s) => {
+              const days = Math.ceil(totalCalorieDeficitNeeded / s.deficit);
+              const targetDate = new Date();
+              targetDate.setDate(targetDate.getDate() + days);
+              
+              return (
+                <tr key={s.label} style={{ borderBottom: '1px solid var(--border-subtle)' }}>
+                  <td style={{ padding: '16px', fontWeight: 600, color: s.color }}>
+                    {s.label} <br/>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 400 }}>(-{s.deficit} kcal)</span>
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'right', fontWeight: 700 }}>
+                    {tdee - s.deficit} kcal
+                  </td>
+                  <td style={{ padding: '16px', textAlign: 'right' }}>
+                    <div style={{ fontWeight: 700 }}>{days} Days</div>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      by {targetDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
 
       <div style={{ marginTop: 'var(--space-xl)', textAlign: 'center' }}>
         <Link href="/log">
-          <button className="btn-primary">
+          <button className="btn-primary" style={{ width: '100%' }}>
             Log Today's Weight
           </button>
         </Link>
       </div>
-
     </div>
   );
 }
