@@ -1,26 +1,101 @@
-@import "tailwindcss";
-
+/* 1. 디자인 변수 정의 (Design Tokens) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Colors: 차분하고 분석적인 느낌의 무채색 위주 */
+  --bg-page: #ffffff;         /* 전체 배경: 순백색 */
+  --bg-card: #ffffff;         /* 카드 배경: 순백색 */
+  
+  --text-main: #111111;       /* 본문 텍스트: 거의 검정 */
+  --text-muted: #666666;      /* 보조 텍스트: 진한 회색 */
+  
+  --border-subtle: #e5e5e5;   /* 경계선: 아주 연한 회색 */
+  --border-focus: #333333;    /* 강조 시 경계선: 진한 회색 */
+  
+  --primary: #2563eb;         /* 포인트 컬러: 신뢰감을 주는 로얄 블루 */
+  --primary-hover: #1d4ed8;   /* 포인트 컬러 (마우스 올렸을 때) */
+
+  /* Spacing: 일관된 간격 */
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 40px;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* 2. 초기화 (Reset) */
+* {
+  box-sizing: border-box; /* 패딩이 너비를 늘리지 않도록 설정 (필수) */
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-main);
+  font-family: system-ui, -apple-system, sans-serif; /* 가장 빠르고 깔끔한 시스템 폰트 */
+  line-height: 1.5; /* 가독성을 위한 줄 간격 */
+  -webkit-font-smoothing: antialiased; /* 폰트를 부드럽게 */
+}
+
+/* 3. 유틸리티 클래스 (Utility Classes) */
+
+/* Layout: 중앙 정렬 컨테이너 */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+/* Card: 정보의 단위 */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px; /* 너무 둥글지 않은, 단정한 모서리 */
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  /* 그림자 없이 경계선만으로 깔끔하게 구분 */
+}
+
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: var(--space-md);
+  color: var(--text-main);
+}
+
+/* Typography */
+h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: var(--space-xl);
+  letter-spacing: -0.02em; /* 큰 글자는 자간을 살짝 좁혀서 단단해 보이게 */
+}
+
+p {
+  color: var(--text-muted);
+  margin-bottom: var(--space-md);
+}
+
+/* Button: 페이지당 하나뿐인 중요 행동 */
+.btn-primary {
+  display: inline-block;
+  background-color: var(--text-main); /* 미니멀리즘: 검정 버튼 */
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  text-decoration: none; /* 링크일 경우 밑줄 제거 */
+}
+
+.btn-primary:hover {
+  background-color: var(--primary); /* 호버 시에만 색상 드러냄 */
+}
+
+/* Grid Layout: 대시보드용 그리드 */
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr; /* 1:1 비율 */
+  gap: var(--space-lg);
 }
